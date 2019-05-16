@@ -1,0 +1,10 @@
+{
+  "01_fc_network/test_main.py": true,
+  "test_datagen.py": true,
+  "test_graph_components.py": true,
+  "test_graph_components.py::test_FullyConnectedModelModel": true,
+  "test_main.py": true,
+  "test_main.py::test_MatMultModel": true,
+  "test_main.py::test_Relu": true,
+  "test_stateless_graph_components.py::test_runs": true
+}

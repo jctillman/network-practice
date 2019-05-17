@@ -15,23 +15,34 @@ def linker(sgc_cls):
 
         def __init__(self, inputs, name = None):
 
+            # Validate and process input, and put
+            # name into the object.
+            name = name or str(uuid.uuid4())
             inputs = inputs if isinstance(inputs, list) else [inputs]
             for inp in inputs:
                 assert issubclass(type(inp), LinkedAbstract)
 
-            name = name or str(uuid.uuid4())
             self.name = name
             
-            input_names = [ inp.name for inp in inputs ]
             # 'input_names' is guaranteed to be unmodified / preserve
             # order, which dag edges isn't.  Kinda ugly.
+            input_names = [ inp.name for inp in inputs ]
             data = { 'sgc': sgc_cls, 'input_names': input_names }
 
+            def data_equality(n1, n2):
+                return (
+                    n1['sgc'] == n2['sgc'] and 
+                    all([
+                        x == y for x, y
+                        in zip(n1['input_names'], n2['input_names'])
+                    ])
+                )
 
+            # Create the dag which actually works
             self.dag = Dag()
             self.dag.add_node(name, input_names, data)
             for dag in [ x.dag for x in inputs ]:
-                self.dag.merge_dag(dag)
+                self.dag.merge_dag(dag, data_equality)
 
         def get_names(self):
             return self.dag.get_node_names()
@@ -79,32 +90,28 @@ def linker(sgc_cls):
 
             # What do we want to return NP arrays for?
             outputs = self.get_outputs() if len(outputs) == 0 else outputs
-
             assert self._verify_input_dict(input_dict.keys(), outputs)
-
-            must_get = self.get_all_required_for(outputs)
-            output_dict = input_dict.copy()
             
-            while len(must_get) > 0:
+            # Get list of keys that need to be calculated,
+            # in order that they need to be calculated.
+            input_keys = input_dict.keys()
+            must_get = self.get_all_required_for(outputs)
+            ordered = [
+                x for x in self.dag.ordered_from_top() 
+                if (
+                    x in must_get and
+                    x not in input_keys
+                ) 
+            ]
 
-                for key in must_get:
-
-                    data = self.dag.get_node(key).data
-                    fnc = data['sgc'].forward
-                    input_names= data['input_names']
-
-                    ready = [ i in output_dict for i in input_names ]
-                    
-                    if all(ready):
-
-                        must_get.remove(key)
-
-                        if key in input_dict:
-                            output_dict[key] = fnc(input_dict[key])
-                        else:
-                            output_dict[key] = fnc(*[
-                                output_dict[k] for k in input_names
-                            ])
+            output_dict = input_dict.copy()
+            for key in ordered:
+                data = self.dag.get_node(key).data
+                fnc = data['sgc'].forward
+                input_names= data['input_names']
+                output_dict[key] = fnc(*[
+                    output_dict[k] for k in input_names
+                ])
                         
             return output_dict
         

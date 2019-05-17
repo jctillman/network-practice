@@ -18,12 +18,14 @@ class DagNode:
     def get_data(self):
         return self.data
 
-    def merge_node(self, other_node):
+    def merge_node(self, other_node, equality_fn):
         assert self.name == other_node.name
-        for edge in other_node.edges:
-            if edge not in self.edges:
-                self.edges.append(edge)
-        self.data.update(other_node.data)
+        assert all([
+            x == y for x, y in
+            zip( self.edges, other_node.edges)
+        ]) 
+        assert equality_fn(self.data, other_node.data)
+        
 
 class Dag:
 
@@ -136,10 +138,34 @@ class Dag:
     def get_nothing_downstream(self):
         return self._get_sourceless(self.get_edge_map_inverted())
 
-    def merge_dag(self, other_dag):
+    def _topological_sort(self, edge_map):
+        all_nodes = list(edge_map.keys())
+        total_num = len(all_nodes)
+        return_list = self._get_sourceless(edge_map)
+        
+        remaining = [ x for x in all_nodes if x not in return_list ]
+
+        while (len(remaining) > 0):
+
+            next_batch = [
+                x for x in remaining
+                if all([
+                    y in return_list for y
+                    in edge_map[x]
+                ])
+            ]
+            return_list.extend(next_batch)
+            remaining = [ x for x in all_nodes if x not in return_list ]
+
+        return return_list
+
+    def ordered_from_top(self):
+        return self._topological_sort(self.get_edge_map())
+
+    def merge_dag(self, other_dag, data_equality_fn):
         for key, value in other_dag.nodes.items():
             if key not in self.nodes:
                 self.nodes[key] = value
             else:
-                self.nodes[key].merge_node(value)
+                self.nodes[key].merge_node(value, data_equality_fn)
     

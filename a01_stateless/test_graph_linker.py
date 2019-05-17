@@ -25,6 +25,103 @@ all_linkers = [
     MatrixMult,
     MatrixAddExact]
 
+
+def test_all_backprob_again():
+    
+    i = Identity([], name='input')
+    iw = Identity([], name='fc_w1')
+    ib = Identity([], name='fc_b1')
+
+    h1 = Sigmoid([MatrixAdd([MatrixMult([i, iw], name='mult1'), ib], name='add1')], name='h1')
+    iw2 = Identity([], name='fc_w2')
+    ib2 = Identity([], name='fc_b2')
+    h2 = Sigmoid([MatrixAdd([MatrixMult([h1, iw2]), ib2])], name='h2')
+    h3 = MatrixAddExact([h1, h2], name='added')
+
+    iw3 = Identity([], name='fc_w3')
+    ib3 = Identity([], name='fc_b3')
+
+    h4 = Relu(MatrixAdd([MatrixMult([h3, iw3]), ib3]))
+
+    h5 = MatrixAddExact([i, h4])
+
+    output = Probabilize(Exponent(h4, name='output'))
+
+    full = output
+    
+    rand = np.random.rand
+
+    def input_generator():
+        return {
+            'input': rand(*[7, 10]),
+            'fc_w1': rand(*[10, 11]),
+            'fc_b1': rand(*[11]),
+            'fc_w2': rand(*[11, 11]),
+            'fc_b2': rand(*[11]),
+            'fc_w3': rand(*[11, 10]),
+            'fc_b3': rand(*[10]),
+        }
+
+    skips = 0
+    for n in range(100):
+
+        inpp = input_generator()
+        desired = rand(*[7, 10])
+
+        forward1 = full.forw(inpp)
+
+        loss1, deriv1 = mean_squared_loss(
+            prediction=forward1['output'],
+            truth=desired)
+
+        derivatives = full.back(
+            { 'output': deriv1 },
+            forward1,
+            list(inpp.keys()))
+
+        k = list(derivatives.keys())
+        r = np.random.choice(k)
+
+        indiv = inpp[r].copy()
+
+        random_point = [ floor(i * random()) for i in indiv.shape]
+
+        this_deriv = derivatives[r]
+        for ii in range(len(random_point)):
+            cord = random_point[ii]
+            this_deriv = this_deriv[cord]
+
+        if np.abs(this_deriv) < 0.001:
+            skips += 1
+            continue
+
+        LR = 0.001
+        change_amount = LR
+        if len(random_point) == 1:
+            indiv[random_point[0]] = indiv[random_point[0]] - change_amount
+        elif len(random_point) == 2:
+            indiv[random_point[0]][random_point[1]] = indiv[random_point[0]][random_point[1]] - change_amount
+        elif len(random_point) == 3:
+            indiv[random_point[0]][random_point[1]][random_point[2]] = indiv[random_point[0]][random_point[1]][random_point[2]] - change_amount
+        elif len(random_point) == 4:
+            indiv[random_point[0]][random_point[1]][random_point[2]][random_point[3]] = indiv[random_point[0]][random_point[1]][random_point[2]][random_point[3]] - change_amount
+        else:
+            assert False
+
+
+        inpp[r] = indiv
+        forward2 = full.forw(inpp)
+        loss2, deriv2 = mean_squared_loss(
+            prediction=forward2['output'],
+            truth=desired)
+
+        amount = (loss1 - loss2)
+        
+        assert np.isclose(loss1, loss2, this_deriv * LR, atol=0.01) or (loss1 == 0.0 and loss2  == 0.0)
+
+
+    assert skips < 50
+
 def test_all_backprob():
     
     i = Identity([], name='input')

@@ -162,6 +162,10 @@ class Dag:
     def ordered_from_top(self):
         return self._topological_sort(self.get_edge_map())
 
+    def ordered_from_bottom(self):
+        return self._topological_sort(self.get_edge_map_inverted())
+
+
     def merge_dag(self, other_dag, data_equality_fn):
         for key, value in other_dag.nodes.items():
             if key not in self.nodes:

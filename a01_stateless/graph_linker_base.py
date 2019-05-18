@@ -15,8 +15,9 @@ def linker(sgc_cls):
 
         def __init__(self, inputs, name = None):
 
-            # Validate and process input, and put
-            # name into the object.
+            # Guarantee that
+            # 1. `inputs` is list of subclasss LinkedAbstract
+            # 2. `name` is unique string.
             name = name or str(uuid.uuid4())
             inputs = inputs if isinstance(inputs, list) else [inputs]
             for inp in inputs:
@@ -24,14 +25,17 @@ def linker(sgc_cls):
 
             self.name = name
             
-            # 'input_names' is guaranteed to be unmodified / preserve
-            # order, which dag edges isn't.  Kinda ugly.
+            # `data` defines each node of our dag, and
+            # contains
+            # 1. `sgc_cls`, which is forward / backward
+            # 2. `input_names` ordered list of parent names.
             input_names = [ inp.name for inp in inputs ]
             data = { 'sgc': sgc_cls, 'input_names': input_names }
 
             def data_equality(n1, n2):
                 return (
-                    n1['sgc'] == n2['sgc'] and 
+                    n1['sgc'] == n2['sgc'] and
+                    len(n1['input_names']) == len(n2['input_names']) and 
                     all([
                         x == y for x, y
                         in zip(n1['input_names'], n2['input_names'])
@@ -147,6 +151,9 @@ def linker(sgc_cls):
             
             # There must be some derivative input
             for output in output_derivs:
+                if not output in upstream_of_derivs:
+                    print("Problem ", output, " not in ", upstream_of_derivs)
+                    assert False
                 assert output in upstream_of_derivs
            
             # Building_deriv is where
@@ -161,51 +168,41 @@ def linker(sgc_cls):
                     build[parent][key] = derivative_dict[key]
 
             to_do = to_calc - set(derivative_dict.keys())
+
+            ordered = [
+                x for x in self.dag.ordered_from_bottom() 
+                if (
+                    x in to_do and
+                    x not in derivative_dict.keys()
+                ) 
+            ]
             
-            # Condition of doing some backprop is that 
-            # [to_backprop][input_key] for each is
-            # filled in the build.
-            # Then:
-            #  1. All those summed.
-            #  2. Backprop
-            #  3. [parent_key][this_key] for parents filled
+            for key in ordered:
 
-            while len(to_do) > 0:
+                children = self.dag.get_children(key)
+                data = self.dag.get_node(key).data
+                parents = data['input_names']
+                
+                inp = [ current_values[i] for i in parents ]
+                if len(parents) == 0:
+                    inp = [ current_values[key] ]
 
-                for key in to_do.copy():
+                errors = fnc = data['sgc'].backward(
+                    inputs=inp,
+                    outputs=current_values[key],
+                    error=self._sum_arr([ build[key][x] for x in children ]))
 
-                    children = self.dag.get_children(key)
-
-                    ready = all([ i in build[key] for i in children ])
-
-                    if ready:
-                        
-                        to_do.remove(key)
-
-                        node = self.dag.get_node(key)
-                        parents = node.data['input_names']
-                        fnc = node.data['sgc'].backward
-                        
-                        inp = [ current_values[i] for i in parents ]
-                        if len(parents) == 0:
-                            inp = [ current_values[key] ]
-
-                        error = self._sum_arr([ build[key][x] for x in children ])
-                        
-                        errors = fnc(inputs=inp,
-                            outputs=current_values[key],
-                            error=error)
-
-                        for i, k in enumerate(parents):
-                            if k not in build:
-                                build[k] = {}
-                            build[k][key] = errors[i]
+                for i, k in enumerate(parents):
+                    if k not in build:
+                        build[k] = {}
+                    build[k][key] = errors[i]
 
             ret = {}
             for n in output_derivs:
                 keys = list(build[n].keys())
                 arr = [ build[n][k] for k in keys ]
-                ret[n] = self._sum_arr(arr)
+                if len(arr) > 0:
+                    ret[n] = self._sum_arr(arr)
 
             return ret
                

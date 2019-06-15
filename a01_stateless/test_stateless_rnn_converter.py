@@ -123,5 +123,3 @@ def test_basic_rnn():
 
         for key in weights.keys():
             weights[key] = weights[key] - 0.01 * backwards[key]
-
-    assert False

@@ -8,6 +8,21 @@ class LinkedAbstract:
     def __init__(self):
         pass
 
+def data_equality(n1, n2):
+    return (
+        n1['sgc'] == n2['sgc'] and
+        len(n1['input_names']) == len(n2['input_names']) and 
+        all([
+            x == y for x, y
+            in zip(n1['input_names'], n2['input_names'])
+        ])
+    )
+
+def sum_arr(arr):
+    ret = np.zeros(arr[0].shape)
+    for i in arr:
+        ret = ret + i
+    return ret
 
 def linker(sgc_cls):
     
@@ -30,17 +45,10 @@ def linker(sgc_cls):
             # 1. `sgc_cls`, which is forward / backward
             # 2. `input_names` ordered list of parent names.
             input_names = [ inp.name for inp in inputs ]
-            data = { 'sgc': sgc_cls, 'input_names': input_names }
-
-            def data_equality(n1, n2):
-                return (
-                    n1['sgc'] == n2['sgc'] and
-                    len(n1['input_names']) == len(n2['input_names']) and 
-                    all([
-                        x == y for x, y
-                        in zip(n1['input_names'], n2['input_names'])
-                    ])
-                )
+            data = {
+                'sgc': sgc_cls,
+                'input_names': input_names
+            }
 
             # Create the dag which actually works
             self.dag = Dag()
@@ -57,38 +65,21 @@ def linker(sgc_cls):
         def get_outputs(self):
             return self.dag.get_nothing_downstream()
         
-        def get_all_required_for(self, names_lst):
-            return self.dag.get_upstreams(names_lst)
-
         def get_inputs_required_for(self, names_lst):
-            all_required_for = self.get_all_required_for(names_lst)
+            all_required_for = self.dag.get_upstreams(names_lst)
             potential_inputs = self.get_inputs()
             return [ x for x in potential_inputs if x in all_required_for ]
 
         def _verify_input_dict(self, input_keys, output_keys):
             required_for = self.get_inputs_required_for(output_keys)
             return all([ x in input_keys for x in required_for ])
-
-        def _sum_arr(self, arr):
-            ret = np.zeros(arr[0].shape)
-            for i in arr:
-                ret = ret + i
-            return ret
         
         '''
             Input:
-                input_dict 
-                    {
-                        'name': np.arr,
-                        'name2': np.arr,
-                    }
-                outputs:
-                    [ 'name4', 'name5' ]
+                input_dict { 'name': np.arr, ... }
+                outputs: [ 'name4', 'name5' ]
             Outputs:
-                {
-                    'name4': np.arr,
-                    'name5': np.arr,
-                }
+                { 'name4': np.arr, 'name5': np.arr }
         '''
         def forw(self, input_dict, outputs=[]):
 
@@ -99,7 +90,7 @@ def linker(sgc_cls):
             # Get list of keys that need to be calculated,
             # in order that they need to be calculated.
             input_keys = input_dict.keys()
-            must_get = self.get_all_required_for(outputs)
+            must_get = self.dag.get_upstreams(outputs)
             ordered = [
                 x for x in self.dag.ordered_from_top() 
                 if (
@@ -119,80 +110,64 @@ def linker(sgc_cls):
                         
             return output_dict
         
+        def find_to_calc_back(self, derivative_keys, output_derivs):
+            # Todo: make this sooo much prettier
+            upstream_of_derivs = self.dag.get_upstreams(derivative_keys)
+            downstream_of_desired_output = self.dag.get_downstreams(output_derivs)
+            to_calc = set(upstream_of_derivs) & set(downstream_of_desired_output)
+
+            for output in output_derivs:
+                if not output in upstream_of_derivs:
+                    print("Problem ", output, " not in ", upstream_of_derivs)
+                    assert False
+
+            return to_calc
+
         '''
             Input:
-               derivative_dict:
-                    {
-                        'name3': np.arr,
-                        'name2': np.arr,
-                    }
-                current_values:
-                    {
-                        'name1': nparr,
-                        'name2': nparr,
-                    }
-                outputs:
-                    [ 'name1', 'name2' ]
-            Output:
-                {
-                    'name1': np.arr,
-                    'name2': np.arr,
-                }
+               derivative_dict: { 'name3': np.arr, ... }
+               current_values: { 'name1': nparr, .. }
+               outputs: [ 'name1', 'name2' ]
+            Output: { 'name1': np.arr }
         '''
         def back(self,
                 derivative_dict,
                 current_values,
                 output_derivs):
             
-            # Todo: make this sooo much prettier
-            upstream_of_derivs = self.dag.get_upstreams(list(derivative_dict.keys()))
-            downstream_of_desired_output = self.dag.get_downstreams(output_derivs)
-            to_calc = (set(upstream_of_derivs) & set(downstream_of_desired_output))
-            
-            # There must be some derivative input
-            for output in output_derivs:
-                if not output in upstream_of_derivs:
-                    print("Problem ", output, " not in ", upstream_of_derivs)
-                    assert False
-                assert output in upstream_of_derivs
-           
+            to_calc = self.find_to_calc_back(
+                list(derivative_dict.keys()),
+                output_derivs)
             # Building_deriv is where
             # most of these are calculated
-            build = {}
-            for key in to_calc:
-                build[key] = {}
-
+            build = { key: {} for key in to_calc }
             for key in derivative_dict.keys():
-                parents = self.dag.get_parents(key)
-                for parent in parents:
+                for parent in self.dag.get_parents(key):
                     build[parent][key] = derivative_dict[key]
 
+            # Create a list of the ordered 
+            # elements that we need to calculate
             to_do = to_calc - set(derivative_dict.keys())
-
             ordered = [
                 x for x in self.dag.ordered_from_bottom() 
-                if (
-                    x in to_do and
-                    x not in derivative_dict.keys()
-                ) 
+                if x in to_do
             ]
             
             for key in ordered:
 
-                children = self.dag.get_children(key)
                 data = self.dag.get_node(key).data
-                parents = data['input_names']
                 
-                inp = [ current_values[i] for i in parents ]
-                if len(parents) == 0:
+                inp = [ current_values[i] for i in data['input_names'] ]
+                if len(data['input_names']) == 0:
                     inp = [ current_values[key] ]
 
                 errors = fnc = data['sgc'].backward(
                     inputs=inp,
                     outputs=current_values[key],
-                    error=self._sum_arr([ build[key][x] for x in children ]))
+                    error=sum_arr([ build[key][x]
+                        for x in self.dag.get_children(key) ]))
 
-                for i, k in enumerate(parents):
+                for i, k in enumerate(data['input_names']):
                     if k not in build:
                         build[k] = {}
                     build[k][key] = errors[i]
@@ -202,7 +177,7 @@ def linker(sgc_cls):
                 keys = list(build[n].keys())
                 arr = [ build[n][k] for k in keys ]
                 if len(arr) > 0:
-                    ret[n] = self._sum_arr(arr)
+                    ret[n] = sum_arr(arr)
 
             return ret
                

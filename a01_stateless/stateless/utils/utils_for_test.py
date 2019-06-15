@@ -1,6 +1,6 @@
 import numpy as np
 
-from loss import mean_squared_loss
+from stateless.loss.loss import mean_squared_loss
 from math import floor
 
 

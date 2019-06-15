@@ -1,7 +1,8 @@
 import numpy as np
 
-from stateless_graph_base import StatelessOp
-from utils import list_equals
+from stateless.nodes.element_base import StatelessOp
+from stateless.utils.utils import list_equals
+
 
 class MatrixMult(StatelessOp):
     '''
@@ -17,7 +18,6 @@ class MatrixMult(StatelessOp):
     input_num = 2
     @classmethod
     def forw(cls, inputs=None):
-        assert len(inputs) == 2
         assert inputs[0].shape[1] == inputs[1].shape[0]
         return np.matmul(inputs[0], inputs[1])
 
@@ -27,6 +27,7 @@ class MatrixMult(StatelessOp):
         secondError = np.matmul(inputs[0].T, error)
         return [ firstError, secondError]
 
+
 class MatrixAddExact(StatelessOp):
     '''
     Takes two matrices of absolutely identical
@@ -35,13 +36,13 @@ class MatrixAddExact(StatelessOp):
     input_num = 2
     @classmethod
     def forw(cls, inputs=None):
-        assert len(inputs) == 2
         assert list_equals(inputs[0].shape, inputs[1].shape) 
         return inputs[0] + inputs[1]
 
     @classmethod
     def back(cls, inputs=None, outputs=None, error=None):
         return [ error, error ]
+
 
 class MatrixAdd(StatelessOp):
     '''
@@ -51,45 +52,44 @@ class MatrixAdd(StatelessOp):
     input_num = 2
     @classmethod
     def forw(cls, inputs=None):
-        assert len(inputs) == 2
         assert list_equals(inputs[0].shape[1:], inputs[1].shape) 
         return inputs[0] + inputs[1]
 
     @classmethod
     def back(cls, inputs=None, outputs=None, error=None):
-        errorSmaller = np.sum(error, axis=0)
-        return [ error, errorSmaller ]
+        errorForSmaller = np.sum(error, axis=0)
+        return [ error, errorForSmaller ]
+
 
 class Relu(StatelessOp):
 
     input_num = 1
     @classmethod
     def forw(cls, inputs=None):
-        assert len(inputs) == 1
         return np.clip(inputs[0], a_min=0, a_max=None)
 
     @classmethod
     def back(cls, inputs=None, outputs=None, error=None):
         return [ np.where(inputs[0] > 0, error, np.zeros(error.shape)) ]
 
+
 class Exponent(StatelessOp):
 
     input_num = 1
     @classmethod
     def forw(cls, inputs=None):
-        assert len(inputs) == 1
         return np.exp(inputs[0])
 
     @classmethod
     def back(cls, inputs=None, outputs=None, error=None):
         return [ np.multiply(outputs, error) ]
 
+
 class Sigmoid(StatelessOp):
 
     input_num = 1
     @classmethod
     def forw(cls, inputs=None):
-        assert len(inputs) == 1
         exp = np.exp(inputs[0])
         return np.divide(exp, exp+ + 1)
 
@@ -97,6 +97,7 @@ class Sigmoid(StatelessOp):
     def back(cls, inputs=None, outputs=None, error=None):
         tmp = np.multiply(outputs, 1 - outputs)
         return [ np.multiply(tmp, error) ]
+
 
 class Identity(StatelessOp):
 
@@ -115,7 +116,6 @@ class Concat(StatelessOp):
     input_num = 2
     @classmethod
     def forw(cls, inputs=None):
-        assert len(inputs) == 2
         assert inputs[0].shape[0] == inputs[1].shape[0]
         return np.concatenate((inputs[0], inputs[1]), axis=1)
 
@@ -124,12 +124,12 @@ class Concat(StatelessOp):
         split_point = inputs[0].shape[1]
         return [ error[:,:split_point ], error[:,split_point:] ]
 
+
 class Probabilize(StatelessOp):
 
     input_num = 1
     @classmethod
     def forw(cls, inputs = None):
-        assert len(inputs) == 1
         assert np.all(inputs[0] >= 0)
         assert len(inputs[0].shape) == 2
         summed = np.sum(inputs[0], axis=1)

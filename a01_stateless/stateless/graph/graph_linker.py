@@ -1,7 +1,7 @@
 import uuid
 import numpy as np
 
-from dag import Dag
+from stateless.utils.dag import Dag
 
 class LinkedAbstract:
     
@@ -52,7 +52,7 @@ def linker(sgc_cls):
 
             # Create the dag which actually works
             self.dag = Dag()
-            self.dag.add_node(name, input_names, data)
+            self.dag.add_node(name, set(input_names), data)
             for dag in [ x.dag for x in inputs ]:
                 self.dag.merge_dag(dag, data_equality)
 

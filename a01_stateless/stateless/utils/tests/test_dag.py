@@ -1,5 +1,5 @@
 
-from dag import Dag
+from stateless.utils.dag import Dag
 
 def test_basics():
 

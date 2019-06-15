@@ -1,13 +1,16 @@
-
 class DagNode:
 
-    def __init__(self, name, edges, data):
+    def __init__(self, name, edges = None, data = None):
+        tmp_edges = edges if edges is not None else set()
+        tmp_data = data if data is not None else {}
+        assert isinstance(tmp_edges, set)
+        assert isinstance(tmp_data, dict)
         self.name = name
-        self.edges = edges if edges is not None else [] 
-        self.data = data if data is not None else {}
+        self.edges = tmp_edges
+        self.data = tmp_data
 
     def add_edge(self, name):
-        self.edges.append(name)
+        self.edges.add(name)
 
     def add_data(self, data):
         self.data.update(data)
@@ -16,15 +19,12 @@ class DagNode:
         return self.edges.copy()
 
     def get_data(self):
-        return self.data
+        return self.data.copy()
 
-    def merge_node(self, other_node, equality_fn):
+    def assert_equal(self, other_node, data_equality_fn):
         assert self.name == other_node.name
-        assert all([
-            x == y for x, y in
-            zip( self.edges, other_node.edges)
-        ]) 
-        assert equality_fn(self.data, other_node.data)
+        assert self.edges == other_node.edges
+        assert data_equality_fn(self.data, other_node.data)
         
 
 class Dag:
@@ -171,5 +171,5 @@ class Dag:
             if key not in self.nodes:
                 self.nodes[key] = value
             else:
-                self.nodes[key].merge_node(value, data_equality_fn)
+                self.nodes[key].assert_equal(value, data_equality_fn)
     

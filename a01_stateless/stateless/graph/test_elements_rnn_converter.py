@@ -3,7 +3,7 @@ import numpy as np
 from math import floor
 from random import random
 
-from graph_linker import (
+from stateless.graph.graph_linked import (
     Relu,
     Exponent,
     Identity,
@@ -14,9 +14,8 @@ from graph_linker import (
     MatrixMult,
     MatrixAddExact)
 
-from loss import mean_squared_loss
-
-from stateless_rnn_converter import to_rnn
+from stateless.loss.loss import mean_squared_loss
+from stateless.graph.rnn_converter import to_rnn
 
 def get_forward():
     BN = 4

@@ -2,7 +2,7 @@
 import numpy as np
 from numpy.random import random, rand
 
-from stateless_graph_components import (
+from stateless.nodes.elements import (
     Relu,
     Sigmoid,
     Exponent,
@@ -13,7 +13,7 @@ from stateless_graph_components import (
     MatrixMult,
     MatrixAddExact)
 
-from test_graph_utils import (
+from stateless.utils.utils_for_test import (
     shape_from_format,
     gen_test_data,
     do_test_runs,

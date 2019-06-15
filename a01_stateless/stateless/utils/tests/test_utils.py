@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.random import random, randint, rand
 
-from utils import to_patches_2d, from_patches_2d
+from stateless.utils.utils import to_patches_2d, from_patches_2d
 
 
 def test_patches():

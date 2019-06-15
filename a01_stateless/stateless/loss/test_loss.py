@@ -2,7 +2,7 @@
 import numpy as np
 from numpy.random import random, randint, rand
 
-from loss import (
+from stateless.loss.loss import (
     mean_squared_loss)
 
 def loss_test_matrices(times):

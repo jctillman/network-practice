@@ -2,7 +2,7 @@ import numpy as np
 from math import floor
 from random import random
 
-from graph_linker import (
+from stateless.graph.graph_linked import (
     Relu,
     Exponent,
     Identity,
@@ -13,7 +13,7 @@ from graph_linker import (
     MatrixMult,
     MatrixAddExact)
 
-from loss import mean_squared_loss
+from stateless.loss.loss import mean_squared_loss
 
 all_linkers = [
     Relu,

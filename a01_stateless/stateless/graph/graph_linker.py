@@ -60,13 +60,13 @@ def linker(sgc_cls):
             return self.dag.get_node_names()
 
         def get_inputs(self):
-            return self.dag.get_nothing_upstream()
+            return self.dag.get_without_parents()
 
         def get_outputs(self):
-            return self.dag.get_nothing_downstream()
+            return self.dag.get_without_descendants()
         
         def get_inputs_required_for(self, names_lst):
-            all_required_for = self.dag.get_upstreams(names_lst)
+            all_required_for = self.dag.get_ancestors_for_all(names_lst)
             potential_inputs = self.get_inputs()
             return [ x for x in potential_inputs if x in all_required_for ]
 
@@ -90,7 +90,7 @@ def linker(sgc_cls):
             # Get list of keys that need to be calculated,
             # in order that they need to be calculated.
             input_keys = input_dict.keys()
-            must_get = self.dag.get_upstreams(outputs)
+            must_get = self.dag.get_ancestors_for_all(outputs)
             ordered = [
                 x for x in self.dag.ordered_from_top() 
                 if (
@@ -112,8 +112,8 @@ def linker(sgc_cls):
         
         def find_to_calc_back(self, derivative_keys, output_derivs):
             # Todo: make this sooo much prettier
-            upstream_of_derivs = self.dag.get_upstreams(derivative_keys)
-            downstream_of_desired_output = self.dag.get_downstreams(output_derivs)
+            upstream_of_derivs = self.dag.get_ancestors_for_all(derivative_keys)
+            downstream_of_desired_output = self.dag.get_descendants_for_all(output_derivs)
             to_calc = set(upstream_of_derivs) & set(downstream_of_desired_output)
 
             for output in output_derivs:

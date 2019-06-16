@@ -39,60 +39,81 @@ class Dag:
         assert not self.has_node(name)
         self.nodes[name] = DagNode(name, edges, data)
 
-    def add_edge(self, name, upstream_name):
+    def has_no_circular_dependencies(self):
+        edge_map = self.get_parent_map()
+        all_nodes = self.get_node_names()
+        for start_node in all_nodes:
+            to_expand = [ start_node ]
+            while len(to_expand) > 0:
+                node = to_expand.pop()
+                children = edge_map[node]
+                for child in children:
+                    if child == start_node:
+                        return False
+                    else:
+                        to_expand.append(child)
+        return True
+
+    def add_edge(self, name, parent_name):
         assert name in self.nodes
-        self.nodes[name].add_edge(upstream_name)
+        self.nodes[name].add_edge(parent_name)
+        assert self.has_no_circular_dependencies()
     
     def add_data(self, name, data):
         assert name in self.nodes
         self.nodes[name].add_data(data)
 
     def get_node_names(self):
-        return self.nodes.keys()
+        return set(self.nodes.keys())
 
     def get_nodes(self):
-        return self.nodes.items()
+        return set(self.nodes.items())
 
     def get_node(self, key):
         return self.nodes[key]
 
-    def get_edge_map(self):
-        edge_map = {}
+    def get_parent_map(self):
+        child_map = {}
         for key, value in self.nodes.items():
-            edge_map[key] = value.get_edges()
-        return edge_map
+            edges = value.get_edges()
+            child_map[key] = value.get_edges()
+            for edge in edges:
+                if edge not in child_map:
+                    child_map[edge] = set()
 
-    def get_edge_map_inverted(self):
-        edge_map_inverted = {}
+        return child_map
+
+    def get_child_map(self):
+        parent_map = {}
         for key, value in self.nodes.items():
 
-            if key not in edge_map_inverted:
-                edge_map_inverted[key] = []
+            if key not in parent_map:
+                parent_map[key] = set()
 
             for edge in value.get_edges():
-                if edge not in edge_map_inverted:
-                    edge_map_inverted[edge] = [key]
+                if edge not in parent_map:
+                    parent_map[edge] = set([key])
                 else:
-                    if key not in edge_map_inverted[edge]:
-                        edge_map_inverted[edge].append(key)
+                    if key not in parent_map[edge]:
+                        parent_map[edge].add(key)
 
-        return edge_map_inverted
+        return parent_map
 
     def _get_dependencies(self, name, edge_map):
         assert name in self.nodes
 
-        frontier_names = [ name ] 
-        results_names = []
+        frontier = set([ name ]) 
+        results = set()
 
-        while len(frontier_names) > 0:
-            node_name = frontier_names.pop()
-            results_names.append(node_name)
-            parent_nodes = edge_map[node_name]
-            for edge_name in parent_nodes:
-                if edge_name not in results_names:
-                    frontier_names.append(edge_name)
+        while len(frontier) > 0:
+            node_name = frontier.pop()
+            results.add(node_name)
+            child_nodes = edge_map[node_name]
+            for edge_name in child_nodes:
+                if edge_name not in results and edge_name not in frontier:
+                    frontier.add(edge_name)
 
-        return results_names
+        return results
 
     def _get_dependencies_arr(self, names, edge_map):
         return_value = set()
@@ -109,34 +130,34 @@ class Dag:
         return returned
 
     def get_parents(self, name):
-        edge_map = self.get_edge_map()
+        edge_map = self.get_parent_map()
         return edge_map[name]
 
     def get_children(self, name):
-        edge_map = self.get_edge_map_inverted()
+        edge_map = self.get_child_map()
         return edge_map[name]
     
-    def get_upstream(self, name):
-        edge_map = self.get_edge_map()
+    def get_ancestors(self, name):
+        edge_map = self.get_parent_map()
         return self._get_dependencies(name, edge_map)
     
-    def get_upstreams(self, names):
-        edge_map = self.get_edge_map()
+    def get_ancestors_for_all(self, names):
+        edge_map = self.get_parent_map()
         return self._get_dependencies_arr(names, edge_map)
 
-    def get_downstream(self, name):
-        edge_map = self.get_edge_map_inverted()        
+    def get_descendants(self, name):
+        edge_map = self.get_child_map()        
         return self._get_dependencies(name, edge_map)
     
-    def get_downstreams(self, names):
-        edge_map = self.get_edge_map_inverted()
+    def get_descendants_for_all(self, names):
+        edge_map = self.get_child_map()
         return self._get_dependencies_arr(names, edge_map)
 
-    def get_nothing_upstream(self):
-        return self._get_sourceless(self.get_edge_map())
+    def get_without_parents(self):
+        return self._get_sourceless(self.get_parent_map())
     
-    def get_nothing_downstream(self):
-        return self._get_sourceless(self.get_edge_map_inverted())
+    def get_without_descendants(self):
+        return self._get_sourceless(self.get_child_map())
 
     def _topological_sort(self, edge_map):
         all_nodes = list(edge_map.keys())
@@ -160,10 +181,10 @@ class Dag:
         return return_list
 
     def ordered_from_top(self):
-        return self._topological_sort(self.get_edge_map())
+        return self._topological_sort(self.get_parent_map())
 
     def ordered_from_bottom(self):
-        return self._topological_sort(self.get_edge_map_inverted())
+        return self._topological_sort(self.get_child_map())
 
 
     def merge_dag(self, other_dag, data_equality_fn):

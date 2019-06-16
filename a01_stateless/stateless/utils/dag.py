@@ -161,13 +161,9 @@ class Dag:
 
     def _topological_sort(self, edge_map):
         all_nodes = list(edge_map.keys())
-        total_num = len(all_nodes)
         return_list = self._get_sourceless(edge_map)
-        
         remaining = [ x for x in all_nodes if x not in return_list ]
-
         while (len(remaining) > 0):
-
             next_batch = [
                 x for x in remaining
                 if all([
@@ -185,7 +181,6 @@ class Dag:
 
     def ordered_from_bottom(self):
         return self._topological_sort(self.get_child_map())
-
 
     def merge_dag(self, other_dag, data_equality_fn):
         for key, value in other_dag.nodes.items():

@@ -1,6 +1,7 @@
 import pytest
 
 from stateless.utils.dag import Dag
+from stateless.utils.utils import list_equals
 
 def test_prevents_loop():
     a = Dag()
@@ -43,7 +44,7 @@ def test_get_dependencies():
     assert set(a.get_descendants('d')) == set(['f', 'd'])
 
 
-def test_basics():
+def test_tests_for_parents_and_descendants():
 
     a = Dag()
     for node in ['a','b','c','d','e','f']:
@@ -54,11 +55,20 @@ def test_basics():
     a.add_edge('d','e')
     a.add_edge('f','d')
 
-
-
     assert set(a.get_without_parents()) == set(['a','b', 'e'])
     assert set(a.get_without_descendants()) == set(['f'])
 
     assert a.has_node('a') == True
     assert a.has_node('z') == False
+
+def test_topological_sorts():
+
+    a = Dag()
+    for node in ['a','b','c']:
+        a.add_node(node)
+    a.add_edge('b', 'a')
+    a.add_edge('c', 'b')
+
+    assert list_equals(a.ordered_from_top(), ['a','b','c'])
+    assert list_equals(a.ordered_from_bottom(), ['c','b','a'])
 

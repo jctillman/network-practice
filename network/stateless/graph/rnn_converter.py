@@ -7,31 +7,24 @@ def to_rnn(linked):
         def __init__(self):
             pass
 
+        def get_num_timesteps(self, inputs):
+            values = list(inputs.values())
+            assert all([
+                val.shape[1] == values[0].shape[1]
+                for val in values
+            ])
+            return values[0].shape[1]
+        
         # Assume all the inputs are like
-        # [BATCH, TIME, X]
-        def forw(self, inputs, weights, hidden_start):
-
-            # Accumulate derivatives for inputs
-            # over X many time steps.
-            timeSteps = None
-            for key, value in inputs.items():
-                if timeSteps == None:
-                    timeSteps = value.shape[1]
-                assert timeSteps == value.shape[1]
-
-            input_derivatives = {}
-            for key, value in inputs.items():
-                input_derivatives = np.zeros(value.shape)
-            weight_derivatives = {}
-            for key, value in weights.items():
-                weight_derivatives = np.zeros(value.shape)
-    
-            ret = []
-            for i in range(timeSteps):
+        # [1, X]
+        def forw_create(self, time_steps, input, weights, initial_hidden, adapter ):
+            
+            ret = [input]
+            for ts in range(time_steps):
 
                 inputs_t = {}
-                for key, value in inputs.items():
-                    inputs_t[key] = value[:,i,:]
+                for key, value in input.items():
+                    inputs_t[key] = ret[ts][key]
 
                 for key, value in weights.items():
                     inputs_t[key] = value
@@ -39,13 +32,38 @@ def to_rnn(linked):
                 for name in linked.get_names():
                     without = name.replace('prior_','')
                     if 'prior_' in name:
-                        if i == 0:
+                        if ts == 0:
+                            
+                            inputs_t[name] = initial_hidden[without]
+                        else:
+                            inputs_t[name] = ret[ts][without]
+                
+                n = linked.forw(inputs_t)
+                ret.append(adapter(n))
+            return ret
+        # Assume all the inputs are like
+        # [BATCH, TIME, X]
+        def forw(self, inputs, weights, hidden_start):
+            time_steps = self.get_num_timesteps(inputs)
+            ret = []
+            for ts in range(time_steps):
+
+                inputs_t = {}
+                for key, value in inputs.items():
+                    inputs_t[key] = value[:,ts,:]
+
+                for key, value in weights.items():
+                    inputs_t[key] = value
+
+                for name in linked.get_names():
+                    without = name.replace('prior_','')
+                    if 'prior_' in name:
+                        if ts == 0:
                             inputs_t[name] = hidden_start[without]
                         else:
-                            inputs_t[name] = ret[i - 1][without]
+                            inputs_t[name] = ret[ts - 1][without]
                 
                 ret.append(linked.forw(inputs_t))
-
             return ret
             
         def back(self,
@@ -71,7 +89,6 @@ def to_rnn(linked):
                         **rev_SOD[i],
                         **prior_derivs[i - 1]
                     }
-                #print(derivative_dict.keys())
 
                 latest_deriv = linked.back(
                     derivative_dict,

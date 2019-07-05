@@ -17,6 +17,10 @@ class Input(Identity):
     def __init__(self, name):
         super().__init__([], name)
 
+class Prior(Identity):
+    def __init__(self, name):
+        super().__init__([], 'prior_' + name)
+
 class Parameter(Identity):
     def __init__(self, name):
         super().__init__([], name)

@@ -1,0 +1,32 @@
+# Design notes
+
+# Given that you have a statefess graph structre,
+# there's a few different ways to design around that.
+
+# So we have GRAPH 
+
+We could say
+
+OPTIMIZER ( GRAPH, WEIGHTS, TRAINING_DATA, LOSS, OPTIMIZER ) => NEW WEIGHTS
+
+But of course this could be bundled in other ways.
+
+Many people find it more natural to think this way.
+
+BUILDER ( GRAPH, WEIGHTS, LOSS, OPTIMIZER ) --> NETWORK
+
+NETWORK ( TRAINING_DATA ) --> NEW_WEIGHTS
+
+Remember,
+
+TRAINING_DATA === (INPUT, OUTPUT)
+
+GRAPH ( WEIGHTS, INPUT ) => GUESSED_OUTPUT
+
+LOSS (GUESSED_OUTPUT, OUTPUT) => BOTTOM GRADIENT
+
+GRAPH ( BOTTOM_GRADIENT, INPUT ) => COMPLETE_GRADIENTS
+
+OPTIMIZER (COMPLETE_GRADIENTS, WEIGHTS ) => NEW_WEIGHTS
+
+

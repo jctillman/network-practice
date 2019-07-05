@@ -1,7 +1,7 @@
 
 import numpy as np
 from math import floor
-from random import random
+
 
 from stateless.graph.graph_linked import (
     Relu,
@@ -16,38 +16,7 @@ from stateless.graph.graph_linked import (
 
 from stateless.loss.loss import mean_squared_loss
 from stateless.graph.rnn_converter import to_rnn
-
-def get_forward():
-    BN = 4
-    T = 15
-    NUM = 3
-    forward_data = np.zeros((BN, T, NUM))
-    for i in range(BN):
-        prior = 'A' if random() > 0.5 else 'C'
-        for ii in range(T):
-            if prior == 'A':
-                if random() > 0.3:
-                    next = 'B'
-                else:
-                    next = 'C'
-            if prior == 'B':
-                if random() > 0.3:
-                    next = 'C'
-                else:
-                    next = 'B'
-            if prior == 'C':
-                if random() > 0.5:
-                    next = 'A'
-                else:
-                    next = 'B'
-            if next == 'A':
-                forward_data[i,ii, 0] = 1
-            if next == 'B':
-                forward_data[i, ii, 1] = 1
-            if next == 'C':
-                forward_data[i, ii, 2] = 1
-            prior = next
-    return forward_data
+from datagen.datagen import stupid_fsm
 
 def test_basic_rnn():
     
@@ -68,34 +37,23 @@ def test_basic_rnn():
         name='output')
     )
 
-    def data_equality(n1, n2):
-        return (
-            n1['sgc'] == n2['sgc'] and
-            len(n1['input_names']) == len(n2['input_names']) and 
-            all([
-                x == y for x, y
-                in zip(n1['input_names'], n2['input_names'])
-            ])
-        )
-
-    forward_data = get_forward()
     BN = 4
     T = 15
     NUM = 3    
     rnn = to_rnn(output)
 
     H_SIZE = 5
-    def get_weights():
-        return {
-            'fc_w1': 0.05 * np.random.rand(3 + H_SIZE, H_SIZE),
-            'fc_b1': 0.05 * np.random.rand(H_SIZE),
-            'fc_w2': 0.05 * np.random.rand(H_SIZE, NUM),
-            'fc_b2': 0.05 * np.random.rand(NUM),
-        }
-
-    weights = get_weights()
+    weights = {
+        'fc_w1': 0.05 * np.random.rand(3 + H_SIZE, H_SIZE),
+        'fc_b1': 0.05 * np.random.rand(H_SIZE),
+        'fc_w2': 0.05 * np.random.rand(H_SIZE, NUM),
+        'fc_b2': 0.05 * np.random.rand(NUM),
+    }
 
     for i in range(50):
+
+        forward_data = stupid_fsm()
+
         forward = rnn.forw(
             { 'input': forward_data },
             weights,

@@ -7,7 +7,7 @@ from stateless.optimizer.sgd import sgd_optimizer
 from stateful.ff_trainer import FFTrainer
 from numpy.random import rand
 
-from datagen.datagen import tree_height_generator, mapper
+from datagen.datagen import tree_height_generator, mnist_generator, mapper
 
 
 from stateless.graph.graph_linked import (
@@ -65,6 +65,47 @@ def test_works_simple():
         applied(mean_squared_loss, 'output'),
         sgd_optimizer)
 
+    xs, ys = generator()
+    loss_before = trainer.test_single(xs, ys)
     trainer.train_batch(100, generator)
+    loss_after = trainer.test_single(xs, ys)
+
+    assert loss_after * 10 < loss_before
+
+def test_works_mnist():
+
+    i = Input('input')
+    iw = Parameter('fc_w1')
+    ib = Parameter('fc_b1')
+    h1 = Sigmoid([MatrixAdd([MatrixMult([i, iw], name='mult1'), ib], name='add1')], name='h1')
+    iw2 = Parameter('fc_w2')
+    ib2 = Parameter('fc_b2')
+    h2 = Relu(MatrixAdd([MatrixMult([h1, iw2]), ib2]))
+    output = Probabilize(Exponent(h2, name='output'))
+
+    weights = {
+        'input': rand(*[2, 28 * 28]),
+        'fc_w1': rand(*[28 * 28, 30]),
+        'fc_b1': rand(*[30]),
+        'fc_w2': rand(*[30, 10]),
+        'fc_b2': rand(*[10]),
+    }
+
+    generator = mapper(mnist_generator, 2, 'input', 'output')
+
+    trainer = FFTrainer(
+        output,
+        weights,
+        applied(mean_squared_loss, 'output'),
+        sgd_optimizer)
+
+    
+    xs, ys = generator()
+    loss_before = trainer.test_single(xs, ys)
+    trainer.train_batch(200, generator)
+    loss_after = trainer.test_single(xs, ys)
+
+    assert loss_after * 2 < loss_before
+
 
 

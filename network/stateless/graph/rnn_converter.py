@@ -1,75 +1,168 @@
 import numpy as np
 
+
+# Goals
+# 0. Make single step-back
+# function, write test verifying that
+# it actually works.
+# 1. Make function invoking single
+# step-back thing repeatedly, which uses
+# the outputs from the multiple
+# step-back thing.
+# 2. 
+
+def is_numpy_dict(dct):
+    return (
+        isinstance(dct, dict) and
+        all([
+            isinstance(x, np.ndarray)
+            for x in dct.values()
+        ])
+    )
+
+
+def forward_rnn_step(
+    graph,
+    weights,
+    initial_hidden_state,
+    time_indexed_inputs):
+    pis = initial_hidden_state
+    assert is_numpy_dict(weights)
+    assert is_numpy_dict(initial_hidden_state)
+    assert is_numpy_dict(time_indexed_inputs)
+    return graph.forw({
+       **weights,
+       **{'prior_' + k: v for k, v in pis.items()},
+       **time_indexed_inputs,
+    })
+
+def get_time_slice(inputs, time_step):
+    assert is_numpy_dict(inputs)
+    return {
+        k: v[:,time_step,:] for k, v in inputs.items()
+    }
+
+def get_timesteps(inputs):
+    values = list(inputs.values())
+    assert all([
+        val.shape[1] == values[0].shape[1]
+        for val in values
+    ])
+    return values[0].shape[1]
+
+def rnn_forward(
+    graph,
+    weights,
+    initial_hidden_state,
+    inputs):
+    assert is_numpy_dict(weights)
+    assert is_numpy_dict(initial_hidden_state)
+    assert is_numpy_dict(inputs)
+
+    values = []
+    timesteps = get_timesteps(inputs)
+    prior_state = initial_hidden_state
+    for i in range(timesteps):
+        time_slice = forward_rnn_step(
+            graph,
+            weights,
+            prior_state,
+            get_time_slice(inputs, i)
+        )
+        values.append(time_slice)
+        prior_state = time_slice
+    return values
+
+
+def terminal_values_only(
+    linked,
+    numpy_dict):
+    ends = linked.get_without_descendants()
+    return all([
+        key in numpy_dict
+        for key in ends
+    ])
+
+def backward_rnn_step(
+    linked,
+    time_sliced_value,
+    time_sliced_deriv,
+    prior_time_sliced,
+    output_deriv_keys):
+    assert is_numpy_dict(time_sliced_value)
+    assert is_numpy_dict(time_sliced_deriv)
+    assert is_numpy_dict(prior_time_sliced)
+    assert isinstance(output_deriv_keys, list)
+
+    prior_time_sliced_trans = {
+        k.replace('prior_',''): v
+        for k, v in prior_time_sliced.items()
+        if 'prior_' in k
+    }
+    assert terminal_values_only(prior_time_sliced_trans)
+    assert terminal_values_only(time_sliced_deriv)
+    assert not (
+        set(prior_time_sliced_trans) &
+        set(time_sliced_deriv)
+    )
+
+    combined_derivs = {
+        **time_sliced_deriv,
+        **prior_time_sliced_trans,
+    }
+
+    return linked.back(
+        combined_derivs,
+        time_sliced_value,
+        output_deriv_keys)
+
+
+
+import numpy as np
+
 def to_rnn(linked):
 
     class LinkedRNN():
 
         def __init__(self):
             pass
-
-        def get_num_timesteps(self, inputs):
-            values = list(inputs.values())
-            assert all([
-                val.shape[1] == values[0].shape[1]
-                for val in values
-            ])
-            return values[0].shape[1]
         
         # Assume all the inputs are like
         # [1, X]
         def forw_create(self, time_steps, input, weights, initial_hidden, adapter ):
-            
-            ret = [input]
-            for ts in range(time_steps):
-
-                inputs_t = {}
-                for key, value in input.items():
-                    inputs_t[key] = ret[ts][key]
-
-                for key, value in weights.items():
-                    inputs_t[key] = value
-
-                for name in linked.get_names():
-                    without = name.replace('prior_','')
-                    if 'prior_' in name:
-                        if ts == 0:
-                            
-                            inputs_t[name] = initial_hidden[without]
-                        else:
-                            inputs_t[name] = ret[ts][without]
+            values = [input]
+            prior_state = initial_hidden
+            for i in range(time_steps):
+                time_slice = forward_rnn_step(
+                    linked,
+                    weights,
+                    prior_state,
+                    input,
+                )
+                value = adapter(time_slice)
+                input = {
+                    k: v for k, v in value.items()
+                    if k in input.keys()
+                }
+                prior_state = value
+                values.append(value)
                 
-                n = linked.forw(inputs_t)
-                ret.append(adapter(n))
-            return ret
+            return values
+
         # Assume all the inputs are like
         # [BATCH, TIME, X]
         def forw(self, inputs, weights, hidden_start):
-            time_steps = self.get_num_timesteps(inputs)
-            ret = []
-            for ts in range(time_steps):
-
-                inputs_t = {}
-                for key, value in inputs.items():
-                    inputs_t[key] = value[:,ts,:]
-
-                for key, value in weights.items():
-                    inputs_t[key] = value
-
-                for name in linked.get_names():
-                    without = name.replace('prior_','')
-                    if 'prior_' in name:
-                        if ts == 0:
-                            inputs_t[name] = hidden_start[without]
-                        else:
-                            inputs_t[name] = ret[ts - 1][without]
-                
-                ret.append(linked.forw(inputs_t))
-            return ret
+            return rnn_forward(
+                linked,
+                weights,
+                hidden_start,
+                inputs
+            )
             
         def back(self,
             time_sliced_values,
             time_sliced_output_derivs,
-            output_derivs):
+            output_deriv_keys):
 
             rev_TSV = list(reversed(time_sliced_values))
             rev_SOD = list(reversed(time_sliced_output_derivs))
@@ -93,7 +186,7 @@ def to_rnn(linked):
                 latest_deriv = linked.back(
                     derivative_dict,
                     rev_TSV[i],
-                    output_derivs,
+                    output_deriv_keys,
                 )
                 
                 derivs.append(latest_deriv)

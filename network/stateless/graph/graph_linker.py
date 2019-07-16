@@ -54,6 +54,10 @@ def linker(sgc_cls):
             # Create the dag which actually works
             self.dag = Dag()
             self.dag.add_node(name, set(input_names), data)
+
+            for i in inputs:
+                i.dag.add_node(name, set(input_names), data)
+
             for dag in [ x.dag for x in inputs ]:
                 self.dag.merge_dag(dag, data_equality)
 
@@ -73,6 +77,7 @@ def linker(sgc_cls):
 
         def _verify_input_dict(self, input_keys, output_keys):
             required_for = self.get_inputs_required_for(output_keys)
+            print([ (x in input_keys, x) for x in required_for ])
             return all([ x in input_keys for x in required_for ])
         
         '''
@@ -167,6 +172,8 @@ def linker(sgc_cls):
                 else:
                     inp = [ values_dict[i] for i in data['input_names'] ]
                 
+                print('key', key)
+                print(self.dag.get_children(key))
                 errors = data['sgc'].backward(
                     inputs=inp,
                     outputs=values_dict[key],

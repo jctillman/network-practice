@@ -78,7 +78,7 @@ def test_rnn_works_simple():
     def batch_gen():
         return { 'input': stupid_fsm() }
 
-    trainer.train_batch(100, batch_gen)
+    trainer.train_batch(10, batch_gen)
 
     trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)) }
 
@@ -116,12 +116,12 @@ def test_rnn_multistep():
 
     BN = 4
     NUM = 3    
-    H_SIZE = 6
+    H_SIZE = 18
     weights = {
-        'fc_w1': 0.05 * np.random.rand(3 + H_SIZE, H_SIZE),
-        'fc_b1': 0.05 * np.random.rand(H_SIZE),
-        'fc_w2': 0.05 * np.random.rand(H_SIZE, NUM),
-        'fc_b2': 0.05 * np.random.rand(NUM),
+        'fc_w1': 0.02 * np.random.rand(3 + H_SIZE, H_SIZE),
+        'fc_b1': 0.02 * np.random.rand(H_SIZE),
+        'fc_w2': 0.02 * np.random.rand(H_SIZE, NUM),
+        'fc_b2': 0.02 * np.random.rand(NUM),
     }
     optimizer = sgd_optimizer
     trainer = RNNTrainer(
@@ -135,7 +135,7 @@ def test_rnn_multistep():
         nmn = alt_patterns()
         return { 'input': nmn }
 
-    trainer.train_batch(3000, batch_gen)
+    trainer.train_batch(50, batch_gen)
 
     trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)) }
 
@@ -154,12 +154,6 @@ def test_rnn_multistep():
         'input': initial
     }, concretizer)
 
-    #print(predicted)
-    print(type(predicted))
-    print(predicted[0])
-    for i in predicted:
-        print(i['input'])
-    assert False
 
 
 

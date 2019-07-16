@@ -39,17 +39,15 @@ def test_all_backprob_again():
     h1 = Sigmoid([MatrixAdd([MatrixMult([i, iw], name='mult1'), ib], name='add1')], name='h1')
     iw2 = Parameter('fc_w2')
     ib2 = Parameter('fc_b2')
-    h2 = Sigmoid([MatrixAdd([MatrixMult([h1, iw2]), ib2])], name='h2')
+    h2 = Sigmoid([MatrixAdd([MatrixMult([h1, iw2], name='mult2'), ib2], name='add2')], name='h2')
     h3 = MatrixAddExact([h1, h2], name='added')
 
     iw3 = Parameter('fc_w3')
     ib3 = Parameter('fc_b3')
 
-    h4 = Relu(MatrixAdd([MatrixMult([h3, iw3]), ib3]))
+    h4 = Relu(MatrixAdd([MatrixMult([h3, iw3], name='mult3'), ib3], name='add3'), name='h4')
 
-    h5 = MatrixAddExact([i, h4])
-
-    output = Probabilize(Exponent(h4, name='output'))
+    output = Exponent(h4, name='output')
 
     full = output
     
@@ -78,6 +76,7 @@ def test_all_backprob_again():
             prediction=forward1['output'],
             truth=desired)
 
+        print('asd', list(inpp.keys()))
         derivatives = full.back(
             { 'output': deriv1 },
             forward1,

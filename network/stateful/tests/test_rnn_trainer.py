@@ -47,7 +47,10 @@ def test_rnn_works_simple():
 
     ii = Identity([], name='prior_h1')
     joined = Concat([i, ii])
-    h1 = Relu(MatrixAdd([MatrixMult([joined, fcw1]), fcb1]), name='h1')
+    h1 = Relu(MatrixAdd([MatrixMult([joined, fcw1]), fcb1]), name='h1_internal')
+
+    h11 = Identity([h1], 'h1')
+
 
     fcw2 = Identity([], name='fc_w2')
     fcb2 = Identity([], name='fc_b2')

@@ -76,7 +76,6 @@ def test_all_backprob_again():
             prediction=forward1['output'],
             truth=desired)
 
-        print('asd', list(inpp.keys()))
         derivatives = full.back(
             { 'output': deriv1 },
             forward1,

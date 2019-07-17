@@ -77,10 +77,10 @@ def rnn_forward(
 def terminal_values_only(
     linked,
     numpy_dict):
-    ends = linked.get_without_descendants()
+    ends = linked.dag.get_without_descendants()
     return all([
-        key in numpy_dict
-        for key in ends
+        key in ends
+        for key in numpy_dict.keys()
     ])
 
 def backward_rnn_step(
@@ -99,11 +99,13 @@ def backward_rnn_step(
         for k, v in prior_time_sliced.items()
         if 'prior_' in k
     }
-    assert terminal_values_only(prior_time_sliced_trans)
-    assert terminal_values_only(time_sliced_deriv)
+    #print(type(prior_time_sliced_trans))
+    #print('y', list(prior_time_sliced_trans.keys()), linked.dag.get_without_descendants())
+    assert terminal_values_only(linked, prior_time_sliced_trans)
+    assert terminal_values_only(linked, time_sliced_deriv)
     assert not (
-        set(prior_time_sliced_trans) &
-        set(time_sliced_deriv)
+        set(prior_time_sliced_trans.keys()) &
+        set(time_sliced_deriv.keys())
     )
 
     combined_derivs = {
@@ -114,7 +116,8 @@ def backward_rnn_step(
     return linked.back(
         combined_derivs,
         time_sliced_value,
-        output_deriv_keys)
+        output_deriv_keys
+    )
 
 
 
@@ -169,36 +172,35 @@ def to_rnn(linked):
 
             timeSteps = len(time_sliced_values)
             derivs = []
-            prior_derivs = []
             for i in range(timeSteps):
                 
                 #all_nodes = linked.get_names()
-                derivative_dict = None
+                #derivative_dict = None
                 
-                if i == 0:
-                    derivative_dict = rev_SOD[i]
-                else:
-                    derivative_dict = {
-                        **rev_SOD[i],
-                        **prior_derivs[i - 1]
-                    }
+                #if i == 0:
+                #    derivative_dict = rev_SOD[i]
+                #else:
+                #    derivative_dict = {
+                #        **rev_SOD[i],
+                #        **prior_derivs[i - 1]
+                #    }
 
-                latest_deriv = linked.back(
-                    derivative_dict,
+                #latest_deriv = linked.back(
+                #    derivative_dict,
+                #    rev_TSV[i],
+                #    output_deriv_keys,
+                #)
+
+                # ("BACK", list(output_deriv_keys))
+                latest_deriv = backward_rnn_step(
+                    linked,
                     rev_TSV[i],
-                    output_deriv_keys,
+                    rev_SOD[i],
+                    derivs[i - 1] if i else {},
+                    list(output_deriv_keys)
                 )
-                
+                                
                 derivs.append(latest_deriv)
-
-                prior_deriv = {}
-                for key, value in latest_deriv.items():
-                    if 'prior_' in key:
-                        prior_deriv[
-                            key.replace('prior_', '')
-                        ] = value
-                
-                prior_derivs.append(prior_deriv)
 
             start = derivs[0]
             for i in range(1, len(derivs)):

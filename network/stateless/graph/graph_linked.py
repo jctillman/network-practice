@@ -4,6 +4,7 @@ import stateless.nodes.elements as els
 from stateless.graph.graph_linker import linker
 
 Relu = linker(els.Relu)
+LeakyRelu = linker(els.LeakyRelu)
 MatrixMult = linker(els.MatrixMult)
 MatrixAddExact = linker(els.MatrixAddExact)
 MatrixAdd = linker(els.MatrixAdd)

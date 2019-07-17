@@ -18,6 +18,7 @@ class MatrixMult(StatelessOp):
     input_num = 2
     @classmethod
     def forw(cls, inputs=None):
+        #print(inputs[0].shape, inputs[1].shape)
         assert inputs[0].shape[1] == inputs[1].shape[0]
         return np.matmul(inputs[0], inputs[1])
 
@@ -74,6 +75,19 @@ class Relu(StatelessOp):
     @classmethod
     def back(cls, inputs=None, outputs=None, error=None):
         return [ np.where(inputs[0] > 0, error, np.zeros(error.shape)) ]
+
+class LeakyRelu(StatelessOp):
+    '''
+    Takes a matrix and clips to be greater than 0
+    '''
+    input_num = 1
+    @classmethod
+    def forw(cls, inputs=None):
+        return np.where(inputs[0] > 0, inputs[0], inputs[0] * 0.1 )
+
+    @classmethod
+    def back(cls, inputs=None, outputs=None, error=None):
+        return [ np.where(inputs[0] > 0, error, error * 0.1 ) ]
 
 
 class Exponent(StatelessOp):

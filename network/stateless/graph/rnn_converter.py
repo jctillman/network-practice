@@ -30,9 +30,11 @@ def forward_rnn_step(
     assert is_numpy_dict(weights)
     assert is_numpy_dict(initial_hidden_state)
     assert is_numpy_dict(time_indexed_inputs)
+    priors = {'prior_' + k: v for k, v in pis.items()}
+    #print("PRIORS", priors.keys())
     return graph.forw({
        **weights,
-       **{'prior_' + k: v for k, v in pis.items()},
+       **priors,
        **time_indexed_inputs,
     })
 
@@ -128,7 +130,7 @@ def to_rnn(linked):
     class LinkedRNN():
 
         def __init__(self):
-            pass
+            self.linked = linked
         
         # Assume all the inputs are like
         # [1, X]

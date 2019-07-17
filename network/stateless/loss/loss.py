@@ -15,14 +15,16 @@ def running_rnn_loss(input_var, output_var, basic_loss):
         def loss(input=None, prediction=None):
                 losses = []
                 derivs = []
-                for t in range(0, input[input_var].shape[1] - 1):
+                shape = None
+                for t in range(0, len(prediction) - 1):
                         loss, deriv = basic_loss(
                                 prediction=prediction[t][output_var],
                                 truth=input[input_var][:,t + 1,:]
                         )
                         derivs.append({ output_var: deriv })
                         losses.append(loss)
-                        derivs.append({ output_var: np.zeros(deriv.shape)})
+                        shape = deriv.shape
+                derivs = derivs + [{output_var: np.zeros(shape)}]
                 return sum(losses), derivs
                 
         return loss

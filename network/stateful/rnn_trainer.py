@@ -17,9 +17,16 @@ class RNNTrainer():
 
         results = self.linked.forw(input_x, self.weights, self.initial_hidden)
         total_loss, gradients = self.loss(input=input_x, prediction=results)
+        print('loss ', total_loss)
+        back = list(self.weights.keys()) + [
+                x for x in
+                self.linked.linked.dag.get_node_names()
+                if 'prior_' in x ]
+
         backwards = self.linked.back(
             results,
-            gradients, self.weights.keys())
+            gradients,
+            back)
         self.optimizer(self.weights, backwards)
 
     def train_batch(self, steps, batch_gen):

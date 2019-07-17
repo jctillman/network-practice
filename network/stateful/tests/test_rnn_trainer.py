@@ -3,7 +3,7 @@ import pytest
 from stateless.utils.dag import Dag
 from stateless.utils.utils import list_equals
 from stateless.loss.loss import mean_squared_loss, applied, running_rnn_loss
-from stateless.optimizer.sgd import sgd_optimizer
+from stateless.optimizer.sgd import sgd_optimizer, get_sgd_optimizer
 from stateful.rnn_trainer import RNNTrainer
 from numpy.random import rand
 import numpy as np
@@ -14,6 +14,7 @@ from datagen.datagen import stupid_fsm, alt_patterns
 
 from stateless.graph.graph_linked import (
     Relu,
+    LeakyRelu,
     Exponent,
     Identity,
     Input,
@@ -106,31 +107,42 @@ def test_rnn_multistep():
 
     ii = Identity([], name='prior_h1')
     joined = Concat([i, ii])
-    h1 = Relu(MatrixAdd([MatrixMult([joined, fcw1]), fcb1]), name='h1')
+    h1 = LeakyRelu(MatrixAdd([MatrixMult([joined, fcw1]), fcb1]), name='internal_h1')
+    h11 = Identity([h1], name='h1')
 
     fcw2 = Identity([], name='fc_w2')
     fcb2 = Identity([], name='fc_b2')
+    i2 = Identity([], name='prior_h2')
+    joined2 = Concat([h1, i2])
+    h2 = LeakyRelu(MatrixAdd([MatrixMult([joined2, fcw2]), fcb2]), name='internal_h2')
+    h22 = Identity([h2], name='h2')
+
+    fcw3 = Identity([], name='fc_w3')
+    fcb3 = Identity([], name='fc_b3')
 
     output = (
-        Relu(
-            MatrixAdd([MatrixMult([h1, fcw2]), fcb2]),
-        name='output')
+        Exponent(
+            MatrixAdd([MatrixMult([h2, fcw3]), fcb3]), name='output')
     )
 
     BN = 4
+    T = 15
     NUM = 3    
-    H_SIZE = 18
+    H_SIZE = 13
     weights = {
-        'fc_w1': 0.02 * np.random.rand(3 + H_SIZE, H_SIZE),
-        'fc_b1': 0.02 * np.random.rand(H_SIZE),
-        'fc_w2': 0.02 * np.random.rand(H_SIZE, NUM),
-        'fc_b2': 0.02 * np.random.rand(NUM),
+        'fc_w1': 0.2 * (np.random.rand(3 + H_SIZE, H_SIZE) - 0.5),
+        'fc_b1': 0.2 * (np.random.rand(H_SIZE) - 0.5),
+        'fc_w2': 0.2 * (np.random.rand(H_SIZE + H_SIZE, H_SIZE) - 0.5),
+        'fc_b2': 0.2 * (np.random.rand(H_SIZE) - 0.5),
+        'fc_w3': 0.2 * (np.random.rand(H_SIZE, NUM) - 0.5),
+        'fc_b3': 0.2 * (np.random.rand(NUM) - 0.5),
     }
-    optimizer = sgd_optimizer
+
+    optimizer = get_sgd_optimizer(0.01)
     trainer = RNNTrainer(
         output, 
         weights,
-        { 'h1': np.zeros((BN, H_SIZE))},
+        { 'h1': np.zeros((BN, H_SIZE)), 'h2': np.zeros((BN, H_SIZE)) },
         running_rnn_loss('input', 'output', mean_squared_loss),
         optimizer)
     
@@ -138,9 +150,9 @@ def test_rnn_multistep():
         nmn = alt_patterns()
         return { 'input': nmn }
 
-    trainer.train_batch(50, batch_gen)
+    trainer.train_batch(500, batch_gen)
 
-    trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)) }
+    trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)), 'h2': np.zeros((1, H_SIZE)) }
 
     num = 20
     initial = np.array([[1,0,0]])
@@ -156,6 +168,8 @@ def test_rnn_multistep():
     predicted = trainer.predict(num, {
         'input': initial
     }, concretizer)
+
+    print([x['input'] for x in predicted])
 
 
 

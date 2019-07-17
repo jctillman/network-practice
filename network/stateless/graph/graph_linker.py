@@ -78,9 +78,13 @@ def linker(sgc_cls):
 
         def _verify_input_dict(self, input_keys, output_keys):
             required_for = self.get_inputs_required_for(output_keys)
-            print([ (x in input_keys, x) for x in required_for ])
-            return all([ x in input_keys for x in required_for ])
-        
+            
+            valid = all([ x in input_keys for x in required_for ])
+            if valid:
+                return valid
+            else:
+                print(output_keys, required_for)
+                print([ (x in input_keys, x) for x in required_for ])
         '''
             Input:
                 input_dict { 'name': np.arr, ... }
@@ -93,6 +97,7 @@ def linker(sgc_cls):
             # What do we want to return NP arrays for?
             input_keys = input_dict.keys()
             outputs = self.get_outputs() if len(outputs) == 0 else outputs
+            #print('get outputs', self.get_outputs())
             assert self._verify_input_dict(input_keys, outputs)
             for key in outputs:
                 assert isinstance(key, str)
@@ -123,7 +128,7 @@ def linker(sgc_cls):
             # We need all inputs [upstream] of desired derivatives
             # in order to calculate these derivatives.
             upstream_of_derivs = self.dag.get_ancestors_for_all(derivative_keys)
-            print("TO_CALC", output_keys, upstream_of_derivs)
+            #print("TO_CALC", output_keys, upstream_of_derivs)
             assert all([key in upstream_of_derivs for key in output_keys ])
             
             #downstream_of_desired_output = self.dag.get_descendants_for_all(output_keys)
@@ -145,7 +150,7 @@ def linker(sgc_cls):
             to_calc = self.find_to_calc_back(
                 list(derivative_dict.keys()),
                 output_derivs)
-            print(to_calc, derivative_dict.keys(), output_derivs)
+            #print(to_calc, derivative_dict.keys(), output_derivs)
 
             # "build" is a dict of dicts, with
             # [parent][child] keys and terminal values
@@ -174,9 +179,9 @@ def linker(sgc_cls):
                 else:
                     inp = [ values_dict[i] for i in data['input_names'] ]
                 
-                print('key', key)
-                print(self.dag.get_node_names())
-                print(self.dag.get_children(key))
+                #print('key', key)
+                #print(self.dag.get_node_names())
+                #print(self.dag.get_children(key))
                 errors = data['sgc'].backward(
                     inputs=inp,
                     outputs=values_dict[key],

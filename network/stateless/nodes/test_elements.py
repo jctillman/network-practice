@@ -4,6 +4,7 @@ from numpy.random import random, rand
 
 from stateless.nodes.elements import (
     Relu,
+    LeakyRelu,
     Sigmoid,
     Exponent,
     Identity,
@@ -39,6 +40,11 @@ def test_Relu():
     shape_generator = shape_from_format([['N','P']],['N','P'])
     do_test_runs(Relu, shape_generator)
     do_test_derivs(Relu, shape_generator)
+
+def test_LeakyRelu():
+    shape_generator = shape_from_format([['N','P']],['N','P'])
+    do_test_runs(LeakyRelu, shape_generator)
+    do_test_derivs(LeakyRelu, shape_generator)
 
 def test_Sigmoid():
     shape_generator = shape_from_format([['N','P']],['N','P'])

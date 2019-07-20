@@ -1,7 +1,7 @@
 
 import numpy as np
 from math import floor
-
+import pytest
 
 from stateless.graph.graph_linked import (
     LeakyRelu,
@@ -62,7 +62,7 @@ def test_basic_rnn():
 
     first_loss = None
     last_loss = None
-    for i in range(500):
+    for i in range(300):
 
         forward_data = alt_patterns()
 
@@ -97,6 +97,6 @@ def test_basic_rnn():
         )
 
         for key in weights.keys():
-            weights[key] = weights[key] - 0.01 * backwards[key]
+            weights[key] = weights[key] - 0.005 * backwards[key]
 
-    assert last_loss * 20 < first_loss 
+    assert last_loss * 3 < first_loss 

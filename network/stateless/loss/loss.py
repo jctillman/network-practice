@@ -30,7 +30,6 @@ def running_rnn_loss(input_var, output_var, basic_loss):
         return loss
 
 def mean_squared_loss(prediction=None, truth=None):
-    
     assert prediction.shape == truth.shape
     loss = 0.5 * np.sum(np.power(prediction - truth, 2))
     deriv = prediction - truth

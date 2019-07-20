@@ -3,7 +3,7 @@ import pytest
 from stateless.utils.dag import Dag
 from stateless.utils.utils import list_equals
 from stateless.loss.loss import mean_squared_loss, applied
-from stateless.optimizer.sgd import sgd_optimizer
+from stateless.optimizer.sgd import get_sgd_optimizer
 from stateful.ff_trainer import FFTrainer
 from numpy.random import rand
 
@@ -25,18 +25,6 @@ from stateless.graph.graph_linked import (
 
 from stateless.loss.loss import mean_squared_loss
 
-all_linkers = [
-    Relu,
-    Exponent,
-    Identity,
-    Input,
-    Parameter,
-    Probabilize,
-    Concat,
-    MatrixAdd,
-    MatrixMult,
-    MatrixAddExact]
-
 def test_works_simple():
 
     i = Input('input')
@@ -49,7 +37,6 @@ def test_works_simple():
     output = Probabilize(Exponent(h2, name='output'))
 
     weights = {
-        'input': rand(*[10, 3]),
         'fc_w1': rand(*[3, 11]),
         'fc_b1': rand(*[11]),
         'fc_w2': rand(*[11, 1]),
@@ -57,19 +44,18 @@ def test_works_simple():
     }
 
     batch_size = 10
-    generator = mapper(tree_height_generator, batch_size, 'input', 'output')
+    generator = mapper(tree_height_generator, 10, 'input', 'output')
 
     trainer = FFTrainer(
         output,
         weights,
         applied(mean_squared_loss, 'output'),
-        sgd_optimizer)
+        get_sgd_optimizer(0.001))
 
     xs, ys = generator()
     loss_before = trainer.test_single(xs, ys)
     trainer.train_batch(100, generator)
     loss_after = trainer.test_single(xs, ys)
-
     assert loss_after * 10 < loss_before
 
 def test_works_mnist():
@@ -84,7 +70,6 @@ def test_works_mnist():
     output = Probabilize(Exponent(h2, name='output'))
 
     weights = {
-        'input': rand(*[2, 28 * 28]),
         'fc_w1': rand(*[28 * 28, 30]),
         'fc_b1': rand(*[30]),
         'fc_w2': rand(*[30, 10]),
@@ -97,7 +82,7 @@ def test_works_mnist():
         output,
         weights,
         applied(mean_squared_loss, 'output'),
-        sgd_optimizer)
+        get_sgd_optimizer(0.001))
 
     
     xs, ys = generator()

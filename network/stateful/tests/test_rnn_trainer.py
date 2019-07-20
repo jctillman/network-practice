@@ -3,7 +3,7 @@ import pytest
 from stateless.utils.dag import Dag
 from stateless.utils.utils import list_equals
 from stateless.loss.loss import mean_squared_loss, applied, running_rnn_loss
-from stateless.optimizer.sgd import sgd_optimizer, get_sgd_optimizer
+from stateless.optimizer.sgd import get_sgd_optimizer
 from stateful.rnn_trainer import RNNTrainer
 from numpy.random import rand
 import numpy as np
@@ -71,7 +71,7 @@ def test_rnn_works_simple():
         'fc_w2': 0.05 * np.random.rand(H_SIZE, NUM),
         'fc_b2': 0.05 * np.random.rand(NUM),
     }
-    optimizer = sgd_optimizer
+    optimizer = get_sgd_optimizer(0.001)
     trainer = RNNTrainer(
         output, 
         weights,
@@ -82,7 +82,7 @@ def test_rnn_works_simple():
     def batch_gen():
         return { 'input': stupid_fsm() }
 
-    trainer.train_batch(10, batch_gen)
+    trainer.train_batch(50, batch_gen)
 
     trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)) }
 
@@ -150,7 +150,7 @@ def test_rnn_multistep():
         nmn = alt_patterns()
         return { 'input': nmn }
 
-    trainer.train_batch(500, batch_gen)
+    trainer.train_batch(50, batch_gen)
 
     trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)), 'h2': np.zeros((1, H_SIZE)) }
 

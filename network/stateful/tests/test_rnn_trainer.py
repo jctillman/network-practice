@@ -45,17 +45,12 @@ def test_rnn_works_simple():
     i = Identity([], name='input')
     fcw1 = Identity([], name='fc_w1')
     fcb1 = Identity([], name='fc_b1')
-
     ii = Identity([], name='prior_h1')
     joined = Concat([i, ii])
     h1 = Relu(MatrixAdd([MatrixMult([joined, fcw1]), fcb1]), name='h1_internal')
-
     h11 = Identity([h1], 'h1')
-
-
     fcw2 = Identity([], name='fc_w2')
     fcb2 = Identity([], name='fc_b2')
-
     output = (
         Relu(
             MatrixAdd([MatrixMult([h1, fcw2]), fcb2]),
@@ -71,7 +66,7 @@ def test_rnn_works_simple():
         'fc_w2': 0.05 * np.random.rand(H_SIZE, NUM),
         'fc_b2': 0.05 * np.random.rand(NUM),
     }
-    optimizer = get_sgd_optimizer(0.001)
+    optimizer = get_sgd_optimizer(0.0025)
     trainer = RNNTrainer(
         output, 
         weights,
@@ -82,10 +77,16 @@ def test_rnn_works_simple():
     def batch_gen():
         return { 'input': stupid_fsm() }
 
-    trainer.train_batch(50, batch_gen)
+    test_batch = batch_gen()
+    initial_loss = trainer.test(test_batch)
+    trainer.train_batch(300, batch_gen)
+    
+    other_loss = trainer.test(test_batch)
+    
+    assert other_loss * 3 < initial_loss
+
 
     trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)) }
-
     num = 20
     initial = np.array([[1,0,0]])
     
@@ -98,6 +99,8 @@ def test_rnn_works_simple():
     predicted = trainer.predict(num, {
         'input': initial
     }, concretizer)
+    print(predicted)
+
 
 def test_rnn_multistep():
     
@@ -150,7 +153,11 @@ def test_rnn_multistep():
         nmn = alt_patterns()
         return { 'input': nmn }
 
+    test_batch = batch_gen()
+    initial_loss = trainer.test(test_batch)
     trainer.train_batch(50, batch_gen)
+    final_loss = trainer.test(test_batch)
+    assert final_loss * 3 < initial_loss
 
     trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)), 'h2': np.zeros((1, H_SIZE)) }
 

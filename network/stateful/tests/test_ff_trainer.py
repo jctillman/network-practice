@@ -84,10 +84,9 @@ def test_works_mnist():
         applied(mean_squared_loss, 'output'),
         get_sgd_optimizer(0.001))
 
-    
     xs, ys = generator()
     loss_before = trainer.test_single(xs, ys)
-    trainer.train_batch(200, generator)
+    trainer.train_batch(150, generator)
     loss_after = trainer.test_single(xs, ys)
 
     assert loss_after * 2 < loss_before

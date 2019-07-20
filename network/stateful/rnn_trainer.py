@@ -29,15 +29,20 @@ class RNNTrainer():
             back)
         self.optimizer(self.weights, backwards)
 
+    def test(self, input_x):
+    
+        results = self.linked.forw(input_x, self.weights, self.initial_hidden)
+        total_loss, gradients = self.loss(input=input_x, prediction=results)
+        return total_loss
+
+
     def train_batch(self, steps, batch_gen):
         for i in range(steps):
             input_x = batch_gen()
             self.train_single(input_x)
 
     def predict(self, num, initial, concretizer):
-        
         slices = [initial]
-
         return self.linked.forw_create(
             num,
             initial,
@@ -46,8 +51,4 @@ class RNNTrainer():
             concretizer,
         )
 
-    #def test_single(self, input_x, input_y):
-    #
-    #    results = self.linked.forw({ **self.weights, **input_x })
-    #    loss, gradient = self.loss(results, input_y)
-    #    return loss
+

@@ -84,8 +84,6 @@ def test_rnn_works_simple():
     other_loss = trainer.test(test_batch)
     
     assert other_loss * 3 < initial_loss
-
-
     trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)) }
     num = 20
     initial = np.array([[1,0,0]])
@@ -99,8 +97,6 @@ def test_rnn_works_simple():
     predicted = trainer.predict(num, {
         'input': initial
     }, concretizer)
-    print(predicted)
-
 
 def test_rnn_multistep():
     
@@ -141,7 +137,7 @@ def test_rnn_multistep():
         'fc_b3': 0.2 * (np.random.rand(NUM) - 0.5),
     }
 
-    optimizer = get_sgd_optimizer(0.01)
+    optimizer = get_sgd_optimizer(0.004)
     trainer = RNNTrainer(
         output, 
         weights,
@@ -155,14 +151,14 @@ def test_rnn_multistep():
 
     test_batch = batch_gen()
     initial_loss = trainer.test(test_batch)
-    trainer.train_batch(50, batch_gen)
+    trainer.train_batch(500, batch_gen)
     final_loss = trainer.test(test_batch)
     assert final_loss * 3 < initial_loss
 
     trainer.initial_hidden = { 'h1': np.zeros((1, H_SIZE)), 'h2': np.zeros((1, H_SIZE)) }
 
     num = 20
-    initial = np.array([[1,0,0]])
+    initial = np.array([[0,0,1]])
     
     def concretizer(val):
         #m = np.random.choice(np.array([0, 1, 2]), p=val['output'][0] / sum(val['output'][0]))

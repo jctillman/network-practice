@@ -19,10 +19,13 @@ def data_equality(n1, n2):
     )
 
 def sum_arr(arr):
-    ret = np.zeros(arr[0].shape)
-    for i in arr:
-        ret = ret + i
-    return ret
+    if len(arr) == 1:
+        return arr[0]
+    else:
+        ret = arr[0]
+        for i in arr[1:]:
+            ret = ret + i
+        return ret
 
 def linker(sgc_cls):
     

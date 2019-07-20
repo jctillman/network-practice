@@ -23,6 +23,9 @@ class StatelessOp:
             outputs = cls.forw(inputs=inputs)
         results = cls.back(inputs=inputs, outputs=outputs, error=error)
         assert len(results) == len(inputs)
-        for i in range(len(results)):
-            assert np.array_equal(results[i].shape, inputs[i].shape)
+
+        # Slows down stuff a ton, don't think it's that important
+        # except when testing new elements.
+        #for i in range(len(results)):
+        #    assert np.array_equal(results[i].shape, inputs[i].shape)
         return results

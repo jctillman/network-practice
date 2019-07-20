@@ -31,12 +31,23 @@ class Dag:
 
     def __init__(self):
         self.nodes = {}
+        self.cache = {
+            "ancestors": {},
+            "descendants": {},
+        }
+
+    def remove_cache(self):
+        self.cache = {
+            "ancestors": {},
+            "descendants": {},
+        }
 
     def has_node(self, name):
         return name in self.nodes
 
     def add_node(self, name, edges=None, data=None):
         assert not self.has_node(name)
+        self.remove_cache()
         self.nodes[name] = DagNode(name, edges, data)
 
     def has_no_circular_dependencies(self):
@@ -57,6 +68,7 @@ class Dag:
     def add_edge(self, name, parent_name):
         assert name in self.nodes
         self.nodes[name].add_edge(parent_name)
+        self.remove_cache()
         assert self.has_no_circular_dependencies()
     
     def add_data(self, name, data):
@@ -73,31 +85,41 @@ class Dag:
         return self.nodes[key]
 
     def get_parent_map(self):
-        child_map = {}
-        for key, value in self.nodes.items():
-            edges = value.get_edges()
-            child_map[key] = value.get_edges()
-            for edge in edges:
-                if edge not in child_map:
-                    child_map[edge] = set()
 
-        return child_map
+        if 'parent_map' in self.cache:
+            return self.cache['parent_map']
 
-    def get_child_map(self):
         parent_map = {}
         for key, value in self.nodes.items():
+            edges = value.get_edges()
+            parent_map[key] = value.get_edges()
+            for edge in edges:
+                if edge not in parent_map:
+                    parent_map[edge] = set()
 
-            if key not in parent_map:
-                parent_map[key] = set()
+        self.cache['parent_map'] = parent_map
+        return parent_map
+
+    def get_child_map(self):
+
+        if 'child_map' in self.cache:
+            return self.cache['child_map']
+
+        child_map = {}
+        for key, value in self.nodes.items():
+
+            if key not in child_map:
+                child_map[key] = set()
 
             for edge in value.get_edges():
-                if edge not in parent_map:
-                    parent_map[edge] = set([key])
+                if edge not in child_map:
+                    child_map[edge] = set([key])
                 else:
-                    if key not in parent_map[edge]:
-                        parent_map[edge].add(key)
+                    if key not in child_map[edge]:
+                        child_map[edge].add(key)
 
-        return parent_map
+        self.cache['child_map'] = child_map
+        return child_map
 
     def _get_dependencies(self, name, edge_map):
         assert name in self.nodes
@@ -138,20 +160,50 @@ class Dag:
         return edge_map[name]
     
     def get_ancestors(self, name):
+
+        if name in self.cache['ancestors']:
+            return self.cache['ancestors'][name]
+
         edge_map = self.get_parent_map()
-        return self._get_dependencies(name, edge_map)
+        ancestors = self._get_dependencies(name, edge_map)
+
+        self.cache['ancestors'][name] = ancestors
+        return ancestors
     
     def get_ancestors_for_all(self, names):
+
+        key = 'ancestors_for_all' + ''.join(sorted(names))
+        if key in self.cache:
+            return self.cache[key]
+
         edge_map = self.get_parent_map()
-        return self._get_dependencies_arr(names, edge_map)
+        ancestors_for_all = self._get_dependencies_arr(names, edge_map)
+
+        self.cache[key] = ancestors_for_all
+        return ancestors_for_all
 
     def get_descendants(self, name):
+
+        if name in self.cache['descendants']:
+            return self.cache['descendants'][name]
+
         edge_map = self.get_child_map()        
-        return self._get_dependencies(name, edge_map)
+        descendants = self._get_dependencies(name, edge_map)
+
+        self.cache['descendants'][name] = descendants
+        return descendants
     
     def get_descendants_for_all(self, names):
+
+        key = 'descendants_for_all' + ''.join(sorted(names))
+        if key in self.cache:
+            return self.cache[key]
+
         edge_map = self.get_child_map()
-        return self._get_dependencies_arr(names, edge_map)
+        descendants_for_all = self._get_dependencies_arr(names, edge_map)
+
+        self.cache[key] = descendants_for_all
+        return descendants_for_all
 
     def get_without_parents(self):
         return self._get_sourceless(self.get_parent_map())
@@ -177,12 +229,27 @@ class Dag:
         return return_list
 
     def ordered_from_top(self):
-        return self._topological_sort(self.get_parent_map())
+
+        if 'ordered_from_top' in self.cache:
+            return self.cache['ordered_from_top']
+
+        ordered_from_top = self._topological_sort(self.get_parent_map())
+        self.cache['ordered_from_top'] = ordered_from_top
+
+        return ordered_from_top
 
     def ordered_from_bottom(self):
-        return self._topological_sort(self.get_child_map())
+
+        if 'ordered_from_bottom' in self.cache:
+            return self.cache['ordered_from_bottom']
+
+        ordered_from_bottom = self._topological_sort(self.get_child_map())
+        self.cache['ordered_from_bottom'] = ordered_from_bottom
+
+        return ordered_from_bottom
 
     def merge_dag(self, other_dag, data_equality_fn):
+        self.remove_cache()
         for key, value in other_dag.nodes.items():
             if key not in self.nodes:
                 self.nodes[key] = value

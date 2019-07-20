@@ -27,11 +27,14 @@ def forward_rnn_step(
     initial_hidden_state,
     time_indexed_inputs):
     pis = initial_hidden_state
+    node_names = graph.get_names()
     assert is_numpy_dict(weights)
     assert is_numpy_dict(initial_hidden_state)
     assert is_numpy_dict(time_indexed_inputs)
-    priors = {'prior_' + k: v for k, v in pis.items()}
-    #print("PRIORS", priors.keys())
+    priors = {
+        'prior_' + k: v for k, v in pis.items()
+        if k in node_names and 'prior_' + k in node_names
+    }
     return graph.forw({
        **weights,
        **priors,
@@ -176,24 +179,6 @@ def to_rnn(linked):
             derivs = []
             for i in range(timeSteps):
                 
-                #all_nodes = linked.get_names()
-                #derivative_dict = None
-                
-                #if i == 0:
-                #    derivative_dict = rev_SOD[i]
-                #else:
-                #    derivative_dict = {
-                #        **rev_SOD[i],
-                #        **prior_derivs[i - 1]
-                #    }
-
-                #latest_deriv = linked.back(
-                #    derivative_dict,
-                #    rev_TSV[i],
-                #    output_deriv_keys,
-                #)
-
-                # ("BACK", list(output_deriv_keys))
                 latest_deriv = backward_rnn_step(
                     linked,
                     rev_TSV[i],

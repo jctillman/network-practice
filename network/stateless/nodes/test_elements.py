@@ -5,6 +5,7 @@ from numpy.random import random, rand
 from stateless.nodes.elements import (
     Relu,
     LeakyRelu,
+    TanH,
     Sigmoid,
     Exponent,
     Identity,
@@ -12,6 +13,7 @@ from stateless.nodes.elements import (
     Concat,
     MatrixAdd,
     MatrixMult,
+    ElementwiseMult,
     MatrixAddExact)
 
 from stateless.utils.utils_for_test import (
@@ -25,6 +27,11 @@ def test_MatrixMult():
     shape_generator = shape_from_format([['N','M'],['M','P']],['N','P'])
     do_test_runs(MatrixMult, shape_generator)
     do_test_derivs(MatrixMult, shape_generator)
+
+def test_ElementwiseMult():
+    shape_generator = shape_from_format([['N','M'],['N','M']],['N','M'])
+    do_test_runs(ElementwiseMult, shape_generator)
+    do_test_derivs(ElementwiseMult, shape_generator)
 
 def test_MatrixAddExact():
     shape_generator = shape_from_format([['N','P'],['N','P']],['N','P'])
@@ -50,6 +57,11 @@ def test_Sigmoid():
     shape_generator = shape_from_format([['N','P']],['N','P'])
     do_test_runs(Sigmoid, shape_generator)
     do_test_derivs(Sigmoid, shape_generator, permissible_skip_ratio=0.6)
+
+def test_TanH():
+    shape_generator = shape_from_format([['N','P']],['N','P'])
+    do_test_runs(TanH, shape_generator)
+    do_test_derivs(TanH, shape_generator, permissible_skip_ratio=0.6)
 
 def test_Exponent():
     shape_generator = shape_from_format([['N','P']],['N','P'])

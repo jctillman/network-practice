@@ -19,6 +19,55 @@ def to_one_hot(mx, num):
     n[num] = 1
     return n
 
+def text_to_one_hot(vocabulary, str):
+    ln = len(vocabulary)
+    return [
+        to_one_hot(ln, vocabulary.index(x))
+        for x in str
+    ]
+
+def one_hot_to_text(vocabulary, one_hot):
+    return ''.join([
+        vocabulary[np.argmax(x)]
+        for x in one_hot
+    ])
+
+def text_generator(batch_size, train=True, file = './datagen/bible.txt'):
+
+    opened = open(file, mode='r')
+    fulltext = opened.read()
+    opened.close()
+
+    start, end = None, None
+    if (train == True):
+        start = 0
+        end = int(len(fulltext) / 2) - 120
+    else:
+        start = len(fulltext / 2)
+        end = len(fulltext) - 120
+
+    vocab = ' abcdefghijklmnopqrstuvwxyz.,?;:!1234567890'
+
+    def sample():
+        start_sample = start + int(random() * (end - start))
+        end_sample = start_sample + 80
+        vanilla = fulltext[start_sample:end_sample]
+        procd = ''.join([ x if x in vocab else ' ' for x in vanilla.lower() ])
+        return procd
+
+    while True:
+        b_xs = []
+        for _ in range(batch_size):
+            pull = None
+            while pull is None or len(pull) != 80:
+                pull = text_to_one_hot(vocab, sample())
+            b_xs.append(pull)
+        yield np.array(b_xs)
+
+
+    
+
+
 def mnist_generator(batch_size, train=True):
 
     (x_train, y_train), (x_test, y_test) = mnist.load_data()

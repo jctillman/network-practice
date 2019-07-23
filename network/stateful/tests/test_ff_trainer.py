@@ -12,6 +12,7 @@ from datagen.datagen import tree_height_generator, mnist_generator, mapper
 
 from stateless.graph.graph_linked import (
     Relu,
+    Relu,
     Exponent,
     Identity,
     Input,
@@ -27,13 +28,17 @@ from stateless.loss.loss import mean_squared_loss
 
 def test_works_simple():
 
+    def get_layer(prev, weight_name, bias_name):
+        iw = Parameter(weight_name)
+        ib = Parameter(bias_name)
+        mult = MatrixMult([prev, iw], name='mult_' + weight_name)
+        add = MatrixAdd([mult, ib], name='add_' + bias_name)
+        return Relu(add)
+
     i = Input('input')
-    iw = Parameter('fc_w1')
-    ib = Parameter('fc_b1')
-    h1 = Sigmoid([MatrixAdd([MatrixMult([i, iw], name='mult1'), ib], name='add1')], name='h1')
-    iw2 = Parameter('fc_w2')
-    ib2 = Parameter('fc_b2')
-    h2 = Relu(MatrixAdd([MatrixMult([h1, iw2]), ib2]))
+
+    h1 = get_layer(i, 'fc_w1', 'fc_b1')
+    h2 = get_layer(h1, 'fc_w2', 'fc_b2')
     output = Probabilize(Exponent(h2, name='output'))
 
     weights = {
@@ -60,13 +65,17 @@ def test_works_simple():
 
 def test_works_mnist():
 
+    def get_layer(prev, weight_name, bias_name):
+        iw = Parameter(weight_name)
+        ib = Parameter(bias_name)
+        mult = MatrixMult([prev, iw], name='mult_' + weight_name)
+        add = MatrixAdd([mult, ib], name='add_' + bias_name)
+        return Relu(add)
+
     i = Input('input')
-    iw = Parameter('fc_w1')
-    ib = Parameter('fc_b1')
-    h1 = Sigmoid([MatrixAdd([MatrixMult([i, iw], name='mult1'), ib], name='add1')], name='h1')
-    iw2 = Parameter('fc_w2')
-    ib2 = Parameter('fc_b2')
-    h2 = Relu(MatrixAdd([MatrixMult([h1, iw2]), ib2]))
+
+    h1 = get_layer(i, 'fc_w1', 'fc_b1')
+    h2 = get_layer(h1, 'fc_w2', 'fc_b2')
     output = Probabilize(Exponent(h2, name='output'))
 
     weights = {

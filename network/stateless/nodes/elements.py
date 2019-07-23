@@ -3,6 +3,28 @@ import numpy as np
 from stateless.nodes.element_base import StatelessOp
 from stateless.utils.utils import list_equals
 
+# Better to error fast than to let errors persist.
+np.seterr(all='raise')
+
+
+class ElementwiseMult(StatelessOp):
+    '''
+    Takes N x P and N x P and returns N x P
+    '''
+    input_num = 2
+    @classmethod
+    def forw(cls, inputs=None):
+        if inputs[0].shape[0] != inputs[1].shape[0] or inputs[0].shape[1] != inputs[1].shape[1]:
+            print(inputs[0].shape, inputs[1].shape)
+            assert False
+        return np.multiply(inputs[0], inputs[1])
+
+    @classmethod
+    def back(cls, inputs=None, outputs=None, error=None):
+        first_err = np.multiply(error, inputs[1])
+        second_err = np.multiply(inputs[0], error)
+        return [ first_err , second_err]
+
 
 class MatrixMult(StatelessOp):
     '''
@@ -18,15 +40,16 @@ class MatrixMult(StatelessOp):
     input_num = 2
     @classmethod
     def forw(cls, inputs=None):
-        #print(inputs[0].shape, inputs[1].shape)
-        assert inputs[0].shape[1] == inputs[1].shape[0]
+        if not inputs[0].shape[1] == inputs[1].shape[0]:
+            print("Must be multipliable: ", inputs[0].shape, inputs[1].shape)
+            assert False
         return np.matmul(inputs[0], inputs[1])
 
     @classmethod
     def back(cls, inputs=None, outputs=None, error=None):
-        firstError = np.matmul(error, inputs[1].T)
-        secondError = np.matmul(inputs[0].T, error)
-        return [ firstError, secondError]
+        first_err = np.matmul(error, inputs[1].T)
+        second_err = np.matmul(inputs[0].T, error)
+        return [ first_err, second_err]
 
 
 class MatrixAddExact(StatelessOp):
@@ -37,7 +60,9 @@ class MatrixAddExact(StatelessOp):
     input_num = 2
     @classmethod
     def forw(cls, inputs=None):
-        assert list_equals(inputs[0].shape, inputs[1].shape) 
+        if not list_equals(inputs[0].shape, inputs[1].shape):
+            print("Must equal exactly: ", inputs[0].shape, inputs[1].shape)
+            assert False
         return inputs[0] + inputs[1]
 
     @classmethod
@@ -83,26 +108,41 @@ class LeakyRelu(StatelessOp):
     input_num = 1
     @classmethod
     def forw(cls, inputs=None):
-        return np.where(inputs[0] > 0, inputs[0], inputs[0] * 0.1 )
+        return np.where(inputs[0] > 0, inputs[0], inputs[0] * 0.01 )
 
     @classmethod
     def back(cls, inputs=None, outputs=None, error=None):
-        return [ np.where(inputs[0] > 0, error, error * 0.1 ) ]
+        return [ np.where(inputs[0] > 0, error, error * 0.01 ) ]
 
 
+MAX_EXP = 15
 class Exponent(StatelessOp):
     '''
     Elementwise raising e by element.
     '''
     input_num = 1
+    
     @classmethod
     def forw(cls, inputs=None):
-        return np.exp(inputs[0])
+        return np.exp(np.clip(inputs[0], a_min=-MAX_EXP, a_max=MAX_EXP))
 
     @classmethod
     def back(cls, inputs=None, outputs=None, error=None):
         return [ np.multiply(outputs, error) ]
 
+class TanH(StatelessOp):
+    '''
+    Elementwise applies sigmoid
+    '''
+    input_num = 1
+    @classmethod
+    def forw(cls, inputs=None):
+        return np.tanh(inputs[0])
+
+    @classmethod
+    def back(cls, inputs=None, outputs=None, error=None):
+        tmp = 1 - np.power(outputs, 2)
+        return [ np.multiply(tmp, error) ]
 
 class Sigmoid(StatelessOp):
     '''
@@ -141,7 +181,9 @@ class Concat(StatelessOp):
     input_num = 2
     @classmethod
     def forw(cls, inputs=None):
-        assert inputs[0].shape[0] == inputs[1].shape[0]
+        if not inputs[0].shape[0] == inputs[1].shape[0]:
+            print(inputs[0].shape, inputs[1].shape)
+            assert False
         return np.concatenate((inputs[0], inputs[1]), axis=1)
 
     @classmethod

@@ -13,11 +13,12 @@ class RNNTrainer():
         self.optimizer = optimizer
         self.loss = loss
 
-    def train_single(self, input_x):
+    def train_single(self, input_x, num = 0):
 
         results = self.linked.forw(input_x, self.weights, self.initial_hidden)
         total_loss, gradients = self.loss(input=input_x, prediction=results)
-        print('loss ', total_loss)
+        if num % 20 == 0:
+            print(num, ' loss ', total_loss)
         back = list(self.weights.keys()) + [
                 x for x in
                 self.linked.linked.dag.get_node_names()
@@ -39,7 +40,7 @@ class RNNTrainer():
     def train_batch(self, steps, batch_gen):
         for i in range(steps):
             input_x = batch_gen()
-            self.train_single(input_x)
+            self.train_single(input_x, i)
 
     def predict(self, num, initial, concretizer):
         slices = [initial]
